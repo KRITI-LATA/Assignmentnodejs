@@ -4,13 +4,13 @@ const path = require("path");
 const { open } = require("sqlite");
 const sqlite3 = require("sqlite3");
 
-const app = express();
 const format = require("date-fns/format");
 
 const isMatch = require("date-fns/isMatch");
 
 const isValid = require("date-fns/isValid");
 
+const app = express();
 app.use(express.json());
 
 const dbPath = path.join(__dirname, "todoApplication.db");
@@ -73,6 +73,7 @@ const convertDBObjectToResponseObject = (dbObject) => {
     id: dbObject.id,
     todo: dbObject.todo,
     priority: dbObject.priority,
+    category: dbObject.category,
     status: dbObject.status,
     dueDate: dbObject.due_date,
   };
@@ -100,7 +101,7 @@ app.get("/todos/", async (request, response) => {
         );
       } else {
         response.status(400);
-        response.send("'Invalid Todo Status");
+        response.send("Invalid Todo Status");
       }
       break;
 
@@ -288,7 +289,7 @@ app.post("/todos/", async (request, response) => {
       }
     } else {
       response.status(400);
-      response.send("'Invalid Todo Status");
+      response.send("Invalid Todo Status");
     }
   } else {
     response.status(400);
@@ -301,19 +302,18 @@ app.post("/todos/", async (request, response) => {
 app.put("/todos/:todoId/", async (request, response) => {
   const { todoId } = request.params;
 
-  let updateColumn = "";
   const requestBody = request.body;
 
   const PreviousTodoQuery = `select * from todo where id = ${todoId};`;
   const previousTodo = await db.get(PreviousTodoQuery);
 
   const {
-    status = previousTodo.status,
-    priority = previousTodo.priority,
     todo = previousTodo.todo,
+    priority = previousTodo.priority,
+    status = previousTodo.status,
     category = previousTodo.category,
     dueDate = previousTodo.dueDate,
-  } = request.body;
+  } = requestBody;
 
   let updateTodo;
 
@@ -324,14 +324,18 @@ app.put("/todos/:todoId/", async (request, response) => {
     case requestBody.status !== undefined:
       if (status === "TO DO" || status === "IN PROGRESS" || status === "DONE") {
         updateTodo = `update todo set 
-                status = '${status}' 
+                todo = '${todo}',
+                priority = '${priority}',
+                status = '${status}',
+                category = '${category}',
+                due_date = '${dueDate}' 
                 where id = ${todoId};`;
 
         await db.run(updateTodo);
         response.send("Status Updated");
       } else {
         response.status(400);
-        response.send("'Invalid Todo Status");
+        response.send("Invalid Todo Status");
       }
       break;
 
@@ -339,7 +343,12 @@ app.put("/todos/:todoId/", async (request, response) => {
     case requestBody.priority !== undefined:
       if (priority === "HIGH" || priority === "MEDIUM" || priority === "LOW") {
         updateTodo = `update todo set 
-                priority = '${priority}' where id = ${todoId};`;
+                todo = '${todo}',
+                priority = '${priority}',
+                status = '${status}',
+                category = '${category}',
+                due_date = '${dueDate}' 
+                where id = ${todoId};`;
         await db.run(updateTodo);
 
         response.send("Priority Updated");
@@ -352,7 +361,11 @@ app.put("/todos/:todoId/", async (request, response) => {
     // Updating Todo
     case requestBody.todo !== undefined:
       updateTodo = `update todo set 
-                todo = '${todo}' 
+                todo = '${todo}',
+                priority = '${priority}',
+                status = '${status}',
+                category = '${category}',
+                due_date = '${dueDate}' 
                 where id = ${todoId};`;
 
       await db.run(updateTodo);
@@ -368,9 +381,12 @@ app.put("/todos/:todoId/", async (request, response) => {
         category === "HOME" ||
         category === "LEARNING"
       ) {
-        updateTodo = `update todo set 
-                category = '${category}'
-                where id =  ${todoId};`;
+        updateTodo = `update todo set
+                todo = '${todo}',
+                status = '${status}',
+                priority = '${priority}',
+                category = '${category}',
+                due_date = '${dueDate}' where id = ${todoId};`;
 
         await db.run(updateTodo);
         response.send("Category Updated");
@@ -385,9 +401,13 @@ app.put("/todos/:todoId/", async (request, response) => {
       if (isMatch(dueDate, "yyyy-MM-dd")) {
         const newDueDate = format(new Date(dueDate), "yyyy-MM-dd");
 
-        updateTodo = `update todo set 
-                due_date = ${newDueDate} 
-                where id = {todoId};`;
+        updateTodo = `update todo set
+                todo = '${todo}', 
+                status = '${status}',
+                priority = '${priority}',
+                category = '${category}',
+                due_date = '${newDueDate}' 
+                where id = ${todoId};`;
 
         await db.run(updateTodo);
         response.send("Due Date Updated");
@@ -403,7 +423,7 @@ app.delete("/todos/:todoId/", async (request, response) => {
   const { todoId } = request.params;
   const deleteTodoQuery = `delete from todo where id = ${todoId};`;
   await db.run(deleteTodoQuery);
-  response.send("todo Deleted");
+  response.send("Todo Deleted");
 });
 
 module.exports = app;
